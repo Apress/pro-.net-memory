@@ -1,0 +1,279 @@
+#!/usr/bin/env python2.7
+"""debianization script for hayai.
+
+Creates uploadable Debian package sources in dist/<distro>.
+
+Refer to http://ubuntuforums.org/showthread.php?t=1846755 for more details on
+the steps involved.
+"""
+
+import datetime
+import gzip
+import fnmatch
+import os
+import shutil
+import stat
+import subprocess
+import tarfile
+import tempfile
+import time
+from collections import namedtuple
+from email import utils as email_utils
+
+
+ChangeLogEntry = namedtuple('ChangeLogEntry',
+                            ('version',
+                             'package_version',
+                             'urgency',
+                             'notes',
+                             'author',
+                             'date', ))
+
+
+SRC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+"""Source directory.
+"""
+
+PACKAGE_NAME = 'hayai'
+"""Package name.
+"""
+
+CHANGELOG_ENTRIES = (
+    ChangeLogEntry(version='1.0.1',
+                   package_version='1',
+                   urgency='high',
+                   notes='Patch version 1.0.0. Fixes missing include.',
+                   author='Nick Bruun <nick@bruun.co>',
+                   date=datetime.datetime(2015, 7, 27, 9, 2, 34)),
+    ChangeLogEntry(version='1.0.0',
+                   package_version='1',
+                   urgency='high',
+                   notes='Release of version 1.0.0.',
+                   author='Nick Bruun <nick@bruun.co>',
+                   date=datetime.datetime(2015, 7, 24, 1, 21, 14)),
+)
+"""Change log entries.
+
+Must be in descending order.
+"""
+
+
+def rfc2822_timestamp(dt):
+    return email_utils.formatdate(time.mktime(dt.timetuple()))
+
+
+def write_changelog(f, entries, distribution, package_version_suffix=''):
+    """Write changelog.
+
+    :param f: File to write changelog to.
+    :param entries: Change log entries.
+    :param distribution: Distribution code name.
+    :param package_version_suffix: Optional package version suffix.
+    """
+
+    for i, entry in enumerate(entries):
+        if i:
+            f.write('\n')
+
+        f.write('%s (%s) %s; urgency=%s\n' % (
+            PACKAGE_NAME,
+            '%s-%s%s~%s1' % (entry.version,
+                             entry.package_version,
+                             package_version_suffix,
+                             distribution),
+            distribution,
+            entry.urgency,
+        ))
+        f.write('\n')
+        for l in entry.notes.split('\n'):
+            f.write('  %s\n' % (l))
+        f.write('\n')
+        f.write(' -- %s  %s\n' % (entry.author, rfc2822_timestamp(entry.date)))
+
+
+def pack_orig_tarball(tarball_path, tarball_dir_name):
+    """Pack original tarball.
+
+    Currently assumes a very simple .gitignore file at the root of the source
+    directory.
+
+    :param changelog_entries: Change log entries.
+    :param distribution: Distribution code name.
+    :param package_version_suffix: Optional package version suffix.
+    """
+
+    # Parse ignore patterns.
+    ignore_patterns = []
+
+    with open(os.path.join(SRC_DIR, '.gitignore'), 'r') as f:
+        for l in f:
+            l = l.strip()
+            if not l or l.startswith('#'):
+                continue
+            ignore_patterns.append(l)
+
+    ignore_patterns += [
+        '.*',  # Ignore all dotfiles.
+        '/Vagrantfile',  # Ignore Vagrantfile.
+        '/debian',
+        '/script',
+    ]
+
+    # Split the ignored patterns into general patterns, general files,
+    # directory-specific patterns, and directory-specific files.
+    general_ignore_patterns = []
+    general_ignore_files = set()
+
+    specific_ignore_files = set()
+
+    for p in ignore_patterns:
+        if '/' in p:
+            if '*' in p:
+                raise NotImplementedError('unsupported pattern: %s' % (p))
+            else:
+                specific_ignore_files.add(p.lstrip('/'))
+        else:
+            if '*' in p:
+                general_ignore_patterns.append(p)
+            else:
+                general_ignore_files.add(p)
+
+    def should_ignore_file(src_path):
+        if src_path in specific_ignore_files:
+            return True
+
+        basename = os.path.basename(src_path)
+        if basename in general_ignore_files:
+            return True
+
+        for p in general_ignore_patterns:
+            if fnmatch.fnmatchcase(basename, p):
+                return True
+
+        return False
+
+    with tempfile.NamedTemporaryFile(suffix='.tar') as tf:
+        # Create the temporary tarball.
+        with tarfile.open(tf.name, 'w') as t:
+            def walk(dir_path):
+                for filename in os.listdir(dir_path):
+                    file_path = os.path.join(dir_path, filename)
+                    src_rel_path = os.path.relpath(file_path, SRC_DIR)
+
+                    if should_ignore_file(src_rel_path):
+                        continue
+
+                    file_stat = os.stat(file_path)
+
+                    if stat.S_ISDIR(file_stat.st_mode):
+                        walk(file_path)
+                    else:
+                        with open(file_path, 'rb') as f:
+                            tar_info = t.gettarinfo(fileobj=f)
+                            tar_info.name = os.path.join(tarball_dir_name,
+                                                         src_rel_path)
+                            tar_info.uid = 1
+                            tar_info.gid = 1
+                            tar_info.uname = 'root'
+                            tar_info.gname = 'root'
+
+                            t.addfile(tar_info, f)
+
+            walk(SRC_DIR)
+
+        # Compress or copy the final tarball.
+        if tarball_path.endswith('.tar'):
+            shutil.copy(tf.name, tarball_path)
+        elif tarball_path.endswith('.gz'):
+            tf.seek(0)
+
+            with gzip.open(tarball_path, 'wb', compresslevel=9) as out_f:
+                out_f.write(tf.read())
+        else:
+            raise NotImplementedError('cannot create %s' % (tarball_path))
+
+
+def debianize(output_dir,
+              tarball_name,
+              tarball_dir_name,
+              tarball_path,
+              changelog_entries,
+              distribution,
+              package_version_suffix=''):
+    # Create a build directory.
+    build_dir = tempfile.mkdtemp()
+
+    try:
+        # Unpack the tarball.
+        shutil.copy(tarball_path, os.path.join(build_dir, tarball_name))
+
+        subprocess.check_call([
+            'tar',
+            '-xf',
+            tarball_name,
+        ], cwd=build_dir)
+
+        build_dir_unpacked = os.path.join(build_dir, tarball_dir_name)
+
+        # Copy over the debian directory.
+        shutil.copytree(os.path.join(SRC_DIR, 'debian'),
+                        os.path.join(build_dir_unpacked, 'debian'))
+
+        shutil.copy(os.path.join(SRC_DIR, 'LICENSE.md'),
+                    os.path.join(build_dir_unpacked, 'debian/copyright'))
+
+        # Write the changelog.
+        changelog_path = os.path.join(build_dir_unpacked, 'debian/changelog')
+
+        with open(changelog_path, 'w') as f:
+            write_changelog(f,
+                            changelog_entries,
+                            distribution,
+                            package_version_suffix)
+
+        # Invoke debuild.
+        debuild_args = ['debuild', '-S', '-sa']
+        if os.getenv('GPG_KEY_ID'):
+            debuild_args.append('-k%s' % (os.environ['GPG_KEY_ID']))
+
+        subprocess.check_call(debuild_args, cwd=build_dir_unpacked)
+
+        # Remove the unpacked sources.
+        shutil.rmtree(os.path.join(build_dir, tarball_dir_name))
+
+        # Move the result to the output directory.
+        for filename in os.listdir(build_dir):
+            if filename != tarball_name:
+                shutil.move(os.path.join(build_dir, filename),
+                            os.path.join(output_dir, filename))
+    finally:
+        shutil.rmtree(build_dir)
+
+
+dist_dir = os.path.join(SRC_DIR, 'dist')
+if not os.path.exists(dist_dir):
+    os.mkdir(dist_dir)
+
+for distribution, package_version_suffix in (
+        ('precise', 'ppa1'),  # Ubuntu 12.04 LTS.
+        ('trusty', 'ppa1'),  # Ubuntu 14.04 LTS.
+        ('vivid', 'ppa1'),  # Ubuntu 15.04.
+):
+    # Create the original tarball.
+    tarball_name = '%s_%s.orig.tar.gz' % (PACKAGE_NAME,
+                                          CHANGELOG_ENTRIES[0].version)
+    tarball_dir_name = '%s-%s' % (PACKAGE_NAME,
+                                  CHANGELOG_ENTRIES[0].version)
+    tarball_path = os.path.join(dist_dir, tarball_name)
+
+    if not os.path.exists(tarball_path):
+        pack_orig_tarball(tarball_path, tarball_dir_name)
+
+    # Debianize for the given distribution.
+    debianize(dist_dir,
+              tarball_name,
+              tarball_dir_name,
+              tarball_path,
+              CHANGELOG_ENTRIES,
+              distribution,
+              package_version_suffix)

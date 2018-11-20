@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes'?>
+<?Copyright (c) Microsoft Corporation. All rights reserved.?>
+<InstrumentationManifest>
+   <Instrumentation>
+      <Regions>
+         <RegionRoot Guid="{4fbb5999-8f4e-4900-9482-000000000000}"
+                     Name="DotNETRuntime-GarbageCollection"
+                     FriendlyName=".NET Garbage Collection">
+            <Region Guid="{4fbb5999-8f4e-4900-9482-000000000001}"
+                    Name="DotNETRuntime-GarbageCollection-GC"
+                    FriendlyName="Garbage Collection">
+               <Start>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="1" Version="2" />
+               </Start>
+               <Stop>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="2" Version="1" />
+               </Stop>
+			   <Match>
+				  <Event TID="true" PID="true" >
+ 				  </Event>
+				  <Parent PID="true" />
+			   </Match>
+			   <Naming>
+				  <PayloadBased NameField="ClrInstanceID" />
+			   </Naming>
+			</Region>
+            <Region Guid="{4fbb5999-8f4e-4900-9482-000000000002}"
+                    Name="DotNETRuntime-GarbageCollection-SuspendingRuntime"
+                    FriendlyName="Suspending Runtime">
+               <Start>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="9" Version="1" />
+               </Start>
+               <Stop>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="8" Version="1" />
+               </Stop>
+			   <Match>
+				  <Event TID="true" PID="true" >
+				  </Event>
+				  <Parent PID="true" />
+			   </Match>
+			   <Naming>
+				  <PayloadBased NameField="ClrInstanceID" />
+			   </Naming>
+            </Region>
+            <Region Guid="{4fbb5999-8f4e-4900-9482-000000000003}"
+                    Name="DotNETRuntime-GarbageCollection-RestartingRuntime"
+                    FriendlyName="Restarting Runtime">
+               <Start>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="7" Version="1" />
+               </Start>
+               <Stop>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="3" Version="1" />
+               </Stop>
+			   <Match>
+				  <Event TID="true" PID="true" >
+				  </Event>
+				  <Parent PID="true" />
+			   </Match>
+			   <Naming>
+				  <PayloadBased NameField="ClrInstanceID" />
+			   </Naming>
+            </Region>
+         </RegionRoot>
+      </Regions>
+   </Instrumentation>
+</InstrumentationManifest>

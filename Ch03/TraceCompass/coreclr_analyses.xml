@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tmfxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="xmlDefinition.xsd">
+	<pattern version="0" id="CoreCLR.threads.state">
+		<head>
+			<traceType id="org.eclipse.linuxtools.lttng2.ust.tracetype" />
+			<label value="CoreCLR.threads.state" />
+		</head>
+
+		<location id="CurrentThread">
+			<stateAttribute type="location" value="CurrentCPU" />
+			<stateAttribute type="constant" value="Current_thread" />
+		</location>
+		
+		<patternHandler initial="thread">
+			<test id="thread_condition">
+				<if>
+					<condition>
+						<stateValue type="eventField" value="context._vtid"/>
+						<stateValue type="query">
+							<stateAttribute type="constant" value="#CurrentScenario" />
+							<stateAttribute type="constant" value="ThreadId" />
+						</stateValue>
+					</condition>
+				</if>
+			</test>	
+			<test id="not_thread_condition">
+				<if>
+					<not>
+						<condition>
+							<stateValue type="eventField" value="context._vtid"/>
+							<stateValue type="query">
+								<stateAttribute type="constant" value="#CurrentScenario" />
+								<stateAttribute type="constant" value="ThreadId" />
+							</stateValue>
+						</condition>
+					</not>
+				</if>
+			</test>	
+			<test id="gc_thread_condition">
+				<if>
+					<or>
+						<condition>
+							<stateValue type="eventField" value="context._vtid"/>
+							<stateValue type="query">
+								<stateAttribute type="constant" value="#CurrentScenario" />
+								<stateAttribute type="constant" value="ThreadId" />
+							</stateValue>
+						</condition>
+						<condition>
+							<stateValue type="eventField" value="context._vtid"/>
+							<stateValue type="query">
+								<stateAttribute type="constant" value="#CurrentScenario" />
+								<stateAttribute type="constant" value="CurrentBGCThreadStartId" />
+							</stateValue>
+						</condition>
+					</or>
+				</if>
+			</test>				
+
+			<action id="on_thread_starting">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="ThreadId" />
+					<stateValue type="eventField" value="context._vtid"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Type" />
+					<stateValue type="eventField" value="Flags" forcedType="int"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="eventField" value="Flags" forcedType="int"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateValue type="eventField" value="context._vtid"/>
+				</stateChange>
+			</action>
+			<action id="on_thread_ending">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="int" value="-1"/>
+				</stateChange>				
+			</action>
+ 			<action id="on_thread_updating">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="eventField" value="Flags"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Type" />
+					<stateValue type="eventField" value="Flags"/>
+				</stateChange>
+			</action>			
+ 			<action id="on_gc_starting">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="int" value="8"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Generation" />
+					<stateValue type="eventField" value="Depth"/>
+				</stateChange>				
+			</action>
+			<action id="on_gc_starting_global">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />				
+					<stateAttribute type="constant" value="CurrentGCThreadStartId" />
+					<stateValue type="eventField" value="context._vtid"/>
+				</stateChange>
+			</action>
+ 			<action id="on_gc_ending">
+ 				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+ 					<stateValue type="query">
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Type" />
+					</stateValue>
+				</stateChange>
+			</action>
+ 			<action id="on_bgc_ending">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+ 					<stateValue type="query">
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Type" />
+					</stateValue>
+				</stateChange>
+			</action>			
+ 			<action id="on_thread_suspending_begin">
+				<stateChange>
+					<if>
+						<not>
+							<condition>
+								<stateValue type="eventField" value="context._vtid"/>
+								<stateValue type="query">
+									<stateAttribute type="constant" value="#CurrentScenario" />
+									<stateAttribute type="constant" value="ThreadId" />
+								</stateValue>
+							</condition>
+						</not>
+					</if>
+					<then>
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Status" />
+						<stateValue type="int" value="9"/>
+					</then>
+					<else>
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Status" />
+						<stateValue type="int" value="12"/>
+					</else>				
+				</stateChange>
+			</action>
+ 			<action id="on_thread_suspending_end">
+				<stateChange>
+					<if>
+						<not>
+							<condition>
+								<stateValue type="eventField" value="context._vtid"/>
+								<stateValue type="query">
+									<stateAttribute type="constant" value="#CurrentScenario" />
+									<stateAttribute type="constant" value="ThreadId" />
+								</stateValue>
+							</condition>
+						</not>
+					</if>
+					<then>
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Status" />
+						<stateValue type="int" value="10"/>
+					</then>
+					<else>
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Status" />
+						<stateValue type="int" value="12"/>
+					</else>
+				</stateChange>				
+			</action>
+ 			<action id="on_thread_restarting_begin">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="int" value="11"/>
+				</stateChange>
+			</action>
+ 			<action id="on_thread_restarting_end">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+ 					<stateValue type="query">
+						<stateAttribute type="constant" value="#CurrentScenario" />
+						<stateAttribute type="constant" value="Type" />
+					</stateValue>
+				</stateChange>
+			</action>
+ 			<action id="on_bgc_starting_global">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />				
+					<stateAttribute type="constant" value="CurrentBGCThreadStartId" />
+					<stateValue type="eventField" value="context._vtid"/>
+				</stateChange>
+			</action>
+ 			<action id="on_bgc_starting_nonconcurrent">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="int" value="16"/>
+				</stateChange>
+			</action>
+ 			<action id="on_bgc_starting_concurrent">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Status" />
+					<stateValue type="int" value="17"/>
+				</stateChange>
+			</action>
+
+			<!-- 	FSMs -->
+
+			<fsm id="thread" initial="state_before_thread" consuming="false">
+				<state id="state_before_thread">
+					<transition event="DotNETRuntime:ThreadCreated" target="state_normal_thread" action="on_thread_starting" />
+				</state>
+				<state id="state_normal_thread">
+					<transition event="DotNETRuntime:ThreadTerminated" target="state_dead_thread" action="on_thread_ending" cond="thread_condition" />
+					<transition event="DotNETRuntime:GCSuspendEEBegin_V1" target="state_suspending_thread" action="on_thread_suspending_begin" />
+					<transition event="DotNETRuntimePrivate:BGCBegin" target="state_during_bgc_nonconcurrent" action="on_bgc_starting_nonconcurrent" cond="thread_condition" />
+				</state>		
+				<state id="state_during_gc">
+					<transition event="DotNETRuntime:GCEnd_V1" target="state_normal_thread" action="on_gc_ending" cond="gc_thread_condition" />
+					<transition event="DotNETRuntimePrivate:BGCBegin" target="state_during_gc" action="on_bgc_starting_global"  />
+				</state>
+				<state id="state_suspending_thread">
+					<transition event="DotNETRuntime:GCSuspendEEEnd_V1" target="state_suspended_thread" action="on_thread_suspending_end" />			
+				</state>
+				<state id="state_suspended_thread">
+					<transition event="DotNETRuntime:GCStart_V2" target="state_during_gc" action="on_gc_starting" cond="thread_condition" />
+					<transition event="DotNETRuntime:GCStart_V2" target="state_suspended_thread" action="on_gc_starting_global" />
+					<transition event="DotNETRuntime:GCRestartEEBegin_V1" target="state_restarting_thread" action="on_thread_restarting_begin" />			
+				</state>
+				<state id="state_restarting_thread">
+					<transition event="DotNETRuntime:GCRestartEEEnd_V1" target="state_normal_thread" action="on_thread_restarting_end" />						
+				</state>
+				<state id="state_during_bgc_idle">
+					<transition event="DotNETRuntimePrivate:BGCBegin" target="state_during_bgc_nonconcurrent" action="on_bgc_starting_nonconcurrent" cond="thread_condition" />
+					<transition event="DotNETRuntimePrivate:BGC2ndNonConBegin" target="state_during_bgc_nonconcurrent" action="on_bgc_starting_nonconcurrent" cond="thread_condition" />				
+					<transition event="DotNETRuntimePrivate:BGC2ndConBegin" target="state_during_bgc_concurrent" action="on_bgc_starting_concurrent" cond="thread_condition" />				
+				</state>
+				<state id="state_during_bgc_concurrent">
+					<transition event="DotNETRuntimePrivate:BGC1stConEnd" target="state_during_bgc_idle" action="on_bgc_ending" cond="thread_condition" />
+					<transition event="DotNETRuntimePrivate:BGC2ndConEnd" target="state_during_bgc_idle" action="on_bgc_ending" cond="thread_condition" />
+				</state>				
+				<state id="state_during_bgc_nonconcurrent">
+					<transition event="DotNETRuntimePrivate:BGC1stNonConEnd" target="state_during_bgc_concurrent" action="on_bgc_starting_concurrent" cond="thread_condition" />
+					<transition event="DotNETRuntimePrivate:BGC2ndNonConEnd" target="state_during_bgc_idle" action="on_bgc_ending" cond="thread_condition" />
+				</state>				
+				<state id="state_dead_thread">
+				</state>
+				<!-- This is not desirable - state machine would be reused between threads. 
+					 Keep instead this fsm forever in state_dead_thread.
+				  -->
+				<!--<final id="state_after_thread" />-->
+			</fsm>
+		</patternHandler>
+	</pattern>
+
+	<timeGraphView id="CoreCLR.threads.state.view">
+		<head>
+			<analysis id="CoreCLR.threads.state" />
+			<label value="CoreCLR.threads.state.view" />
+		</head>
+		
+		<!-- 
+		Thread type based on Flags from DotNETRuntime:ThreadCreated
+		kEtwThreadFlagThreadPoolWorker 	0x00000004
+		kEtwThreadFlagGCSpecial			0x00000001
+		kEtwThreadFlagFinalizer			0x00000002
+		-->	
+		<definedValue name="USER THREAD" value="0" color="#CCCCCC"/>
+		<definedValue name="GC THREAD" value="1" color="#D6F0FF"/>
+		<definedValue name="FINALIZER THREAD" value="2" color="#118811"/>
+		<definedValue name="THREADPOOL THREAD" value="4" color="#A0A0A0"/>
+		<definedValue name="GCWORK" value="8" color="#0000FF"/>
+		<definedValue name="SUSPENDING" value="9" color="#8C5656"/>
+		<definedValue name="RESTARTING" value="11" color="#758C56"/>
+		<definedValue name="GCPREPARE" value="12" color="#A38A8A"/>
+		<definedValue name="BGCWORK NONCONCURRENT" value="16" color="#00A4FC"/>
+		<definedValue name="BGCWORK CONCURRENT" value="17" color="#000099"/>
+	
+	
+		<entry path="scenarios/*">
+			<display type="self" />
+			<name type="self" />
+			<entry path="*">
+				<display type="constant" value="Status" />
+				<name type="constant" value="ThreadId" />
+			</entry>			
+		</entry>
+	</timeGraphView>
+	
+	<pattern version="0" id="CoreCLR.GC.state">
+		<head>
+			<traceType id="org.eclipse.linuxtools.lttng2.ust.tracetype" />
+			<label value="CoreCLR.GC.collections" />
+		</head>
+		
+		<storedField id="Reason"/>	
+		<storedField id="Type"/>	
+
+		<patternHandler initial="gcsegments">
+			<test id="count_condition">
+				<if>
+					<condition>
+						<stateValue type="eventField" value="Count"/>
+						<stateValue type="query">
+							<stateAttribute type="constant" value="#CurrentScenario" />
+							<stateAttribute type="constant" value="Count" />
+						</stateValue>
+					</condition>
+				</if>
+			</test>			
+			<action id="gc_starting">
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Generation" />
+					<stateValue type="eventField" value="Depth"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="Count" />
+					<stateValue type="eventField" value="Count"/>
+				</stateChange>
+			</action>
+			<action id="gc_ending">
+				<segment>
+					<segType>
+						<segName>
+							<stateValue type="query">
+								<stateAttribute type="constant" value="#CurrentScenario" />
+								<stateAttribute type="constant" value="Generation" />
+							</stateValue>
+						</segName>
+					</segType>				
+				</segment>
+			</action>
+			<fsm id="gcsegments" initial="state_before_gc">
+				<state id="state_before_gc">
+					<transition event="DotNETRuntime:GCStart_V2" target="state_during_gc" action="gc_starting" saveStoredFields="true" />
+				</state>
+				<state id="state_during_gc">
+					<transition event="DotNETRuntime:GCEnd_V1" target="state_after_gc" action="gc_ending" cond="count_condition" saveStoredFields="true" clearStoredFields="true" />
+				</state>
+				<final id="state_after_gc" />
+			</fsm>
+		</patternHandler>	
+	</pattern>
+	
+	<!-- GC statistics -->
+	<stateProvider version="0" id="CoreCLR.GC.statistics">
+		<head>
+			<traceType id="org.eclipse.linuxtools.lttng2.ust.tracetype" />
+			<label value="CoreCLR.GC.generations.ranges" />
+		</head>
+		
+		<eventHandler eventName="DotNETRuntime:GCGenerationRange">
+			<stateChange>
+				<stateAttribute type="constant" value="Generations" />
+				<stateAttribute type="eventField" value="Generation" />
+				<stateValue type="eventField" value="RangeUsedLength" forcedType="long"/>
+			</stateChange>
+		</eventHandler>
+	</stateProvider>
+
+	<xyView id="CoreCLR.GC.statistics.view">
+		<head>
+			<analysis id="CoreCLR.GC.statistics" />
+			<label value="CoreCLR.GC.statistics.view" />
+		</head>
+
+		<entry path="Generations/*">
+			<display type="self" />			
+		</entry>
+	</xyView>	
+</tmfxml>

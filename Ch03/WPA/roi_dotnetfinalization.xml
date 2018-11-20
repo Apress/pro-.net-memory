@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes'?>
+<?Copyright (c) Microsoft Corporation. All rights reserved.?>
+<InstrumentationManifest>
+   <Instrumentation>
+      <Regions>
+         <RegionRoot Guid="{4fbb5999-8f4e-4900-9482-100000000000}"
+                     Name="DotNETRuntime-Finalization"
+                     FriendlyName=".NET Finalization">
+            <Region Guid="{4fbb5999-8f4e-4900-9482-100000000001}"
+                    Name="DotNETRuntime-GarbageCollection-Finalization"
+                    FriendlyName="Finalization">
+               <Start>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="14" Version="1" />
+               </Start>
+               <Stop>
+                  <Event Provider="{E13C0D23-CCBC-4E12-931B-D9CC2EEE27E4}" Id="13" Version="1" />
+               </Stop>
+			   <Match>
+				  <Event TID="true" PID="true" >
+ 				  </Event>
+				  <Parent PID="true" />
+			   </Match>
+			   <Naming>
+				  <PayloadBased NameField="ThreadId" />
+			   </Naming>
+            </Region>
+		 </RegionRoot>
+      </Regions>
+   </Instrumentation>
+</InstrumentationManifest>

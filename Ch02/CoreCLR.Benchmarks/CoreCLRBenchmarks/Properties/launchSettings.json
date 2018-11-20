@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RowColumnsBenchmark": {
+      "commandName": "Project",
+      "commandLineArgs": "f1"
+    }
+  }
+}
