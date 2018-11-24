@@ -3,7 +3,9 @@
 This repository accompanies [*Pro .NET Memory Management*](https://www.apress.com/9781484240267) by Konrad Kokosa (Apress, 2018).
 
 [comment]: #cover
-![Cover image](9781484240267.jpg)## Instructions
+![Cover image](9781484240267.jpg)
+
+## Instructions
 
 This repository contains files that are stored with Git Large File Storage (LFS). To download the complete package, including any large files, first install [Git LFS](https://git-lfs.github.com/). Then clone the repository to your machine using Git or GitHub Desktop.
 
